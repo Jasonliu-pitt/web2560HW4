@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <title>User Profile</title>
+        <link rel="stylesheet" type="text/css"  href="https://cdn.bootcss.com/bootstrap/3.3.7/css/bootstrap.css">
+        <link rel="stylesheet" type="text/css"  href="stylesheets/style.css">
+		<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+	</head>
+	<script>
+		profileModule = angular.module('profile',[]);
+		profileModule.controller('profileController',function($scope,$http){
+			
+			// find the user
+			if (!sessionStorage.getItem('userid')){
+				alert("Please login");
+				location.href = '/login';
+			}else{
+				var url = '/userctrl/' + sessionStorage.getItem('userid');
+				$http.get(url).then(function (response){
+				$scope.user = response.data;
+				$scope.newemail = $scope.user.email;
+				$scope.newtel = $scope.user.tel;
+			}, function (response){
+				$scope.postMsg = { 'Failed': true, 'message': "Error Status: " +  response.statusText};
+			});
+			}
+			
+				
+				
+			//edit button
+			$scope.passwordEdit = false;
+			$scope.editPassword = function(){
+				if(!$scope.passwordEdit){
+					$scope.passwordEdit = true;
+					document.getElementById("editPassword").innerHTML = "Cancel";
+				}else{
+					document.getElementById("editPassword").innerHTML = "Edit";
+					$scope.passwordEdit = false;
+					$scope.oldPassword = null;
+					$scope.newPassword = null;
+					$scope.comfirmPassword = null;
+					$scope.postMsg = null;
+				}	
+			}
+			
+			//edit information
+			$scope.profilepost= function(){			
+				var url = '/userctrl/' + sessionStorage.getItem('userid');
+				var config = {
+						headers : {
+								'Accept': 'application/json'
+								}
+				}
+				
+				var pwd = $scope.newPassword;
+				var postMsg = { 'Falied': false };
+				
+				if ($scope.passwordEdit){
+					if($scope.oldPassword != $scope.user.password){
+						postMsg = { 'Failed': true, 'message': 'The old password is not correct' };
+						pwd = $scope.user.password;
+					}else{
+						if ($scope.newPassword == null ||$scope.newPassword == ""){
+							postMsg = { 'Failed': true, 'message': 'New password cannnot be empty!' };
+							pwd = $scope.user.password;
+						}else if ($scope.newPassword != $scope.comfirmPassword){
+							postMsg = { 'Failed': true, 'message': 'Two password doesnot match!' };
+							pwd = $scope.user.password;
+						}else if ($scope.user.password == $scope.newPassword){
+							postMsg = { 'Failed': true, 'message': 'New password cannot be the same as the old password!' };
+							pwd = $scope.user.password;
+						}
+					}
+					
+					var data = {
+						name: $scope.user.name,
+						password: pwd,
+						email:$scope.newemail,
+						tel:$scope.newtel
+					}
+					
+					if(postMsg.Failed){
+						$scope.postMsg = postMsg;
+					}else{
+						$http.post(url,JSON.stringify(data), config).then(function (response){
+							$scope.postMsg= response.data;
+							if(!$scope.postMsg.Failed){
+								$scope.oldPassword = "";
+								$scope.newPassword = "";
+								$scope.comfirmPassword = "";
+								$scope.newemail = $scope.postMsg.data.email;
+								$scope.newtel = $scope.postMsg.data.tel;
+							}
+						}, function (response){
+							$scope.postMsg = { 'Failed': true, 'message': "Error Status: " +  response.statusText};
+						});
+					}
+				
+				}else{
+					var data = {
+						name: $scope.user.name,
+						password: $scope.user.password,
+						email:$scope.newemail,
+						tel:$scope.newtel
+					}
+					
+					$http.post(url,JSON.stringify(data), config).then(function (response){
+						$scope.postMsg= response.data;
+						if(!$scope.postMsg.Failed){
+						$scope.newemail = $scope.postMsg.data.email;
+						$scope.newtel = $scope.postMsg.data.tel;
+						}
+					}, function (response){
+						$scope.postMsg = "Error Status: " +  response.statusText;
+					});
+				}
+			}
+			
+			//logout
+			$scope.logout= function(){
+				sessionStorage.clear(); 
+				location.href = '/';
+			}
+			
+			//Delete
+			$scope.delete= function(){
+				if(confirm("You really want to delete this account?")){
+					var url = '/userctrl/' + sessionStorage.getItem('userid');
+					$http.delete(url).then(function (response){
+							$scope.postMsg= response.data;
+							if(!$scope.postMsg.Failed){
+								sessionStorage.clear(); 
+								location.href = '/';
+							}
+						}, function (response){
+							$scope.postMsg = { 'Failed': true, 'message': "Error Status: " +  response.statusText};
+						});
+				}
+			}
+		})
+	</script>
+    <body>
+        <!--=-------
+        Navigation 
+        ------------>
+        <div id="nav" class="container-fluid">
+            <nav class="navbar navbar-custom">
+                <div class="container">
+                    <div class="navbar-header">
+                        <a class="navbar-brand" href="#page-top">Zhixiang Liu</a> 
+                    </div>
+                    <ul class="nav navbar-nav">
+                        <li><a class="nav-item nav-link" href="/">Login</a></li>
+                        <li><a class="nav-item nav-link" href="/register">Register</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </div>
+        <!--=-------
+        profile
+------------>
+        <div  id = "profile" class = "container" ng-app = "profile">
+			<div class = "col-md-8 col-md-offset-2" ng-controller = "profileController">
+			    <div class="section-title text-center center">
+                    <h2>User Information</h2>
+                    <hr class="divider">
+                </div>
+				<form class="form-horizontal" name = "profileInfo">
+					<div class="form-group">
+                        <span class="col-sm-3 control-label">User Name:</span>
+                        <div class="col-sm-9">
+                            <h4>{{user.name}}</h4>
+                        </div>
+                    </div>
+					<div class="form-group">
+                        <span class="col-sm-3 control-label">Password:</span>
+                        <div class="col-sm-9">
+                            <button ng-model="editPassword" id = "editPassword" class="btn btn-default" ng-click="editPassword()">Edit</button>
+                        </div>
+                    </div>
+					<div class="form-group" ng-show = "passwordEdit">
+                        <span class="col-sm-3 control-label">Old Password:<label>*</label></span>
+                        <div class="col-sm-9">
+							<input ng-model="oldPassword" class="form-control" type="password" name="oldPassword">
+                        </div>
+                    </div>
+					<div class="form-group" ng-show = "passwordEdit">
+                        <span class="col-sm-3 control-label">New Password:<label>*</label></span>
+                        <div class="col-sm-9">
+							<input ng-model="newPassword" class="form-control" type="password" name="newPassword">
+                        </div>
+                    </div>
+					<div class="form-group" ng-show = "passwordEdit">
+                        <span class="col-sm-3 control-label">Comfirm Password:<label>*</label></span>
+                        <div class="col-sm-9">
+							<input ng-model="comfirmPassword" class="form-control" type="password" name="comfirmPassword">
+                        </div>
+                    </div>
+					<div class="form-group">
+                        <span class="col-sm-3 control-label">Email Address:</span>
+                        <div class="col-sm-9">
+							<input ng-model="newemail" class="form-control" type="text" name="newemail" >
+                        </div>
+                    </div>
+					<div class="form-group">
+                        <span class="col-sm-3 control-label">Telephone Number:</span>
+                        <div class="col-sm-9">
+							<input ng-model="newtel" class="form-control" type="text" name="newtel" >
+                        </div>
+                    </div>
+					<div class="col-md-9 col-md-offset-3" ng-show = "postMsg.Failed">
+							<div class="alert alert-danger">{{postMsg.message}}</div>
+					</div>
+					<div class="col-md-9 col-md-offset-3" ng-show = "data.show">
+							<div class="alert alert-danger">{{data.message}}</div>
+					</div>
+                    <div class="form-group">
+                        <div class="col-md-5, col-md-offset-7">
+                            <button type="submit" value="Save" class="btn btn-default" ng-click = "profilepost()">Save</button>
+                            <button value="logout" class="btn btn-default" ng-click = "logout()">logout</button>
+							<button value="delete" class="btn btn-default" ng-click = "delete()">Delete</button>
+                        </div>
+                    </div>
+				</form>
+			</div>
+		</div>
+        <!------------------
+        footer
+     -------------------->
+        <div id="footer" class="text-center container-fluid">
+            <div class="section-title center">
+                <h2>Contact me</h2>
+                <hr class="divider">
+            </div>
+            <div class="col-md-6 col-md-offset-3">
+                <div class="col-md-4"> <span class="glyphicon glyphicon-home"></span>
+                    <p>5620 Fifth Ave<br>
+                        Pittsburgh,PA,15260</p>
+                </div>
+                <div class="col-md-4"> <span class="glyphicon glyphicon-envelope"></span>
+                    <p>zhl136@pitt.edu.cn</p>
+                </div>
+                <div class="col-md-4"> <span class="glyphicon glyphicon-phone glyphicon-lg"></span>
+                    <p> +1 951 801 0076</p>
+                </div>
+                <hr>
+                <div class="clearfix"></div>
+            </div>
+            <!------------------
+            copyright
+         -------------------->	
+            <div class="copyright container-fluid">
+                <div class="col-md-4 col-md-offset-4">
+                    <p>Copyright &copy; 2018 Zhixiang Liu @pitt</p>
+                </div>
+            </div>
+    </body>
+</html>
